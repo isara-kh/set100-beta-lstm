@@ -29,7 +29,7 @@ def build_sequences(df, L=L):
 
     Returns:
       X    : (n, L, 10) predictors over the lookback window
-      y    : (n,)       realized beta over (t, t+12]
+      y    : (n,)       forward realized beta over (t, t+12]
       meta : DataFrame  ['ric', 'ym', 'date'] aligned row-for-row with X, y
     """
     Xs, ys, rics, yms, dates = [], [], [], [], []

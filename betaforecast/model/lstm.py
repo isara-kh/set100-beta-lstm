@@ -1,6 +1,6 @@
 """The LSTM beta forecaster and its walk-forward training driver.
 
-Forecasts one-year-ahead realized beta from 12-month sequences of ten predictors
+Forecasts forward realized beta from 12-month sequences of ten predictors
 (Gu-Kelly-Xiu 2020 / Drobetz et al. 2025 style). One small fixed architecture --
 LSTM(8, dropout 0.1) -> Dense(1) -- trained with a value-weighted MSE, averaged
 over a 10-seed ensemble, refit at each of the ten walk-forward steps. Forecasts

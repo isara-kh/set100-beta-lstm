@@ -1,5 +1,5 @@
 """Forecast-behaviour figures from oos_forecasts.parquet: pooled densities of
-realized beta vs the three forecasts (forecast_distribution.pdf), their monthly
+forward realized beta vs the three forecasts (forecast_distribution.pdf), their monthly
 cross-sectional averages over 2015-2024 (forecast_timeseries.pdf), and the
 forecast-vs-realized correlation table.
 """
@@ -37,7 +37,7 @@ SERIES = [
 
 
 def plot_distribution(df):
-    """Single overlay: realized beta (grey reference) and the three forecasts."""
+    """Single overlay: forward realized beta (grey reference) and the three forecasts."""
     grid = np.linspace(-0.2, 2.6, 400)
     rt = df["y_true"].dropna().values
     rt_kde = gaussian_kde(rt)(grid)
@@ -48,7 +48,7 @@ def plot_distribution(df):
         ("OLS_5Y_M",   "yhat_ols5ym", "#d62728"),  # red
     ]
     fig, ax = plt.subplots(figsize=(7, 4.2))
-    # realized beta as a filled grey reference distribution
+    # forward realized beta as a filled grey reference distribution
     ax.fill_between(grid, rt_kde, color="0.75", alpha=0.6, lw=0, label="Realized beta")
     ax.plot(grid, rt_kde, color="0.5", lw=1.2)
     ax.axvline(rt.mean(), color="0.5", ls=":", lw=0.9)
@@ -72,7 +72,7 @@ def plot_distribution(df):
 
 
 def plot_timeseries(df):
-    """Small multiples over time: realized beta vs one forecast per panel."""
+    """Small multiples over time: forward realized beta vs one forecast per panel."""
     cols = [c for _, c, _, _ in SERIES]
     g = df.groupby("ym")[cols].mean().sort_index()
     x = pd.PeriodIndex(g.index, freq="M").to_timestamp()
@@ -112,7 +112,7 @@ def plot_timeseries(df):
 
 
 def plot_timeseries_rebased(df):
-    """Single panel: cross-sectional average of realized beta and the three
+    """Single panel: cross-sectional average of forward realized beta and the three
     forecasts, each indexed to 100 at the first OOS month so only relative
     movements remain."""
     cols = [c for _, c, _, _ in SERIES]
@@ -143,7 +143,7 @@ def plot_timeseries_rebased(df):
 
 
 def _corrs(sub):
-    """Correlation of each forecast with the realized beta over one subsample, plus
+    """Correlation of each forecast with the forward realized beta over one subsample, plus
     the agreement between the two short-window forecasts. Pearson (r) and Spearman
     (rho); the latter is the non-parametric cross-check robust to the fat tails."""
     row = {"n": len(sub)}
@@ -155,7 +155,7 @@ def _corrs(sub):
 
 
 def correlation_table(df):
-    """Forecast correlations with realized beta, pooled and split pre/post-COVID
+    """Forecast correlations with forward realized beta, pooled and split pre/post-COVID
     on the forecast origin (same regime boundaries as the DM test).
     """
     ym = df["ym"].astype(str)
@@ -177,7 +177,7 @@ def report():
 
     corr = correlation_table(df)
     corr.to_parquet(CORR)
-    print(f"\nForecast correlations with realized beta -> {os.path.relpath(CORR, REPO)}")
+    print(f"\nForecast correlations with forward realized beta -> {os.path.relpath(CORR, REPO)}")
     print(corr.round(4).to_string())
 
 
