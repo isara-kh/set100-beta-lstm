@@ -1,20 +1,27 @@
 """Subsample cuts of accuracy and importance: size tercile x COVID regime.
 
-Slices the zero-out importance by size tercile and by pre/post-COVID regime, and
-runs the LSTM-vs-benchmark DM test per tercile x regime cell. The muted
-forecasts are cached to importance_cells.parquet so re-slicing skips the ~5 min
-pass through the saved ensembles.
+Two halves with different input requirements, kept separately runnable:
+
+* `accuracy_report` -- the DM test per tercile x regime cell. Needs only the
+  published oos_forecasts.parquet, so it runs from a bare clone.
+* `importance_report` -- the zero-out importance slices. Needs the input panel
+  and the trained ensembles, neither of which is distributed. The muted
+  forecasts are cached to importance_cells.parquet so re-slicing skips the
+  ~5 min pass through the saved models.
+
+`python -m betaforecast.importance.subsamples --dm-only` runs the first alone.
 """
+import argparse
 import os
 
 import numpy as np
 import pandas as pd
 
-from betaforecast.importance import zero_out as IMP
 from betaforecast.importance import by_size as SS
 from betaforecast.evaluation import dm_test
 from betaforecast.features import standardize as Z
-from betaforecast.paths import OOS_FORECASTS as OOS, DATA_PROCESSED, REPO
+from betaforecast.paths import (OOS_FORECASTS as OOS, LSTM_INPUT_PANEL as PANEL,
+                                MODELS as MODEL_DIR, DATA_PROCESSED, rel)
 
 CELLS = DATA_PROCESSED / "importance_cells.parquet"
 PREDICTORS = Z.PREDICTORS
@@ -41,6 +48,9 @@ def build_cells():
     """Per-stock-month muted forecasts + ME/y_true + tercile + regime, cached."""
     if os.path.exists(CELLS):
         return pd.read_parquet(CELLS)
+    # Imported here, not at module scope: it pulls in keras, which the DM-only
+    # path has no use for.
+    from betaforecast.importance import zero_out as IMP
     fc = IMP.collect_forecasts()
     oos = pd.read_parquet(OOS)[["ric", "ym", "ME", "y_true", "yhat_lstm"]]
     df = fc.merge(oos, on=["ric", "ym"], how="left", validate="one_to_one")
@@ -78,30 +88,56 @@ def tercile_regime_dm(oos):
     return pd.DataFrame(rows).set_index(["group", "regime"])
 
 
-def report():
+def accuracy_report():
+    """DM accuracy per tercile x regime. Needs only the published OOS table."""
+    print("\n=== Tercile x regime DM accuracy (VW) ===")
+    trd = tercile_regime_dm(pd.read_parquet(OOS))
+    print(trd.round(3).to_string())
+    out = DATA_PROCESSED / "dm_tercile_regime.parquet"
+    trd.to_parquet(out)
+    print(f"\nSaved: {rel(out)}")
+    return trd
+
+
+def importance_report():
+    """Zero-out importance sliced by tercile and by regime. Needs the input
+    panel and the trained ensembles, so it cannot run from a bare clone.
+    """
     df = build_cells()
 
-    print("\n=== H1 add-on: zero-out importance by SIZE TERCILE (VW) ===")
+    print("\n=== Zero-out importance by SIZE TERCILE (VW) ===")
     ter = pd.DataFrame({g: importance_within(df[df["size_grp"] == g])
                         for g in SS.GROUPS})
     print(ter.reindex(ter["Mid"].abs().sort_values(ascending=False).index)
           .round(4).to_string())
 
-    print("\n=== H2 add-on: zero-out importance by REGIME (VW) ===")
+    print("\n=== Zero-out importance by REGIME (VW) ===")
     reg = pd.DataFrame({r: importance_within(df[df["regime"] == r])
                         for r in ("pre", "post")})
     print(reg.reindex(reg["pre"].abs().sort_values(ascending=False).index)
           .round(4).to_string())
 
-    print("\n=== H2 add-on: tercile x regime DM accuracy (VW) ===")
-    trd = tercile_regime_dm(pd.read_parquet(OOS))
-    print(trd.round(3).to_string())
+    ter.to_parquet(DATA_PROCESSED / "importance_by_tercile.parquet")
+    reg.to_parquet(DATA_PROCESSED / "importance_by_regime.parquet")
+    print("\nSaved: importance_by_tercile / importance_by_regime .parquet")
+    return ter, reg
 
-    ter.to_parquet(os.path.join(REPO, "data", "processed", "importance_by_tercile.parquet"))
-    reg.to_parquet(os.path.join(REPO, "data", "processed", "importance_by_regime.parquet"))
-    trd.to_parquet(os.path.join(REPO, "data", "processed", "dm_tercile_regime.parquet"))
-    print("\nSaved: importance_by_tercile / importance_by_regime / dm_tercile_regime .parquet")
+
+def report(dm_only=False):
+    """Accuracy first (always available), then importance when its inputs are."""
+    accuracy_report()
+    if dm_only:
+        return
+    missing = [rel(p) for p in (PANEL, MODEL_DIR) if not os.path.exists(p)]
+    if missing and not os.path.exists(CELLS):
+        print(f"\nSkipping zero-out importance: {', '.join(missing)} not present "
+              "(not distributed -- see the data availability note in README).")
+        return
+    importance_report()
 
 
 if __name__ == "__main__":
-    report()
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--dm-only", action="store_true",
+                    help="run only the tercile x regime DM test (no models needed)")
+    report(dm_only=ap.parse_args().dm_only)
