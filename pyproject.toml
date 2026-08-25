@@ -20,9 +20,18 @@ dependencies = [
 # Install with `uv sync` (dev groups install by default) so `uv run jupyter lab`
 # and the notebooks under notebooks/ work out of the box.
 notebook = ["jupyterlab", "nbconvert", "ipykernel"]
+test = ["pytest"]
+
+[tool.pytest.ini_options]
+# tests/ is not a package; conftest helpers are imported by module name.
+testpaths = ["tests"]
+pythonpath = ["tests"]
 
 [tool.uv]
 # The `betaforecast` package is run in place via `python -m betaforecast.<module>`
 # from the repo root, so it does not need to be built/installed — uv only manages
 # the dependencies above.
 package = false
+# Both groups install on a plain `uv sync`, so `uv run jupyter lab` and
+# `uv run pytest` work straight after cloning.
+default-groups = ["notebook", "test"]
