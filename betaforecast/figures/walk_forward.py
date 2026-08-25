@@ -7,7 +7,11 @@ window shifts forward one year per iteration, so the test blocks tile the
 2015-2024 out-of-sample period (10 x 12 = 120 month-ends).
 """
 import os
-os.environ.setdefault("MPLCONFIGDIR", "/tmp/claude/mpl")
+
+from betaforecast.paths import REPO
+
+os.environ.setdefault("MPLCONFIGDIR", str(REPO / ".cache_mpl"))
+
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -16,7 +20,6 @@ from matplotlib.patches import FancyArrowPatch
 sns.set_theme(style="white")
 pastel = sns.color_palette("pastel")
 C_TRAIN, C_VAL, C_GAP, C_TEST = pastel[0], pastel[2], "0.86", pastel[3]
-from betaforecast.paths import REPO
 
 n_iter = 10
 row_h, dy = 0.60, 1.0

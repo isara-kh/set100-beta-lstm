@@ -8,7 +8,9 @@ evaluation.evaluate and importance.zero_out.
 """
 import os
 
-os.environ.setdefault("MPLCONFIGDIR", os.path.join(os.environ.get("TMPDIR", "/tmp"), "mpl"))
+from betaforecast.paths import REPO
+
+os.environ.setdefault("MPLCONFIGDIR", str(REPO / ".cache_mpl"))
 
 import numpy as np
 import pandas as pd
