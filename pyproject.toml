@@ -1,0 +1,28 @@
+[project]
+name = "betaforecast"
+version = "1.0.0"
+description = "Walk-forward LSTM forecasts of SET100 realized betas, benchmarked against rolling-OLS estimators with Diebold-Mariano tests"
+authors = [{ name = "Isa Khambut", email = "isa.khambut@gmail.com" }]
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "tensorflow",
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "scipy",
+    "matplotlib",
+    "seaborn",
+    "openpyxl",
+]
+
+[dependency-groups]
+# Interactive / notebook tooling (kept out of the core runtime deps).
+# Install with `uv sync` (dev groups install by default) so `uv run jupyter lab`
+# and the notebooks under notebooks/ work out of the box.
+notebook = ["jupyterlab", "nbconvert", "ipykernel"]
+
+[tool.uv]
+# The `betaforecast` package is run in place via `python -m betaforecast.<module>`
+# from the repo root, so it does not need to be built/installed — uv only manages
+# the dependencies above.
+package = false

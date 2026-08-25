@@ -1,0 +1,26 @@
+"""Central filesystem paths: every module resolves its inputs and outputs
+through these constants, anchored at the repo root one level above this file.
+"""
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+
+DATA = REPO / "data"
+DATA_RAW = DATA / "raw"
+DATA_PROCESSED = DATA / "processed"
+MODELS = REPO / "models"
+FIGURES = REPO / "figures"
+
+# Processed artifacts referenced by name across the pipeline.
+LSTM_INPUT_PANEL = DATA_PROCESSED / "lstm_input_panel.parquet"
+PROCESSED_PANEL = DATA_PROCESSED / "processed_data_panel.parquet"
+LSTM_OOS_FORECASTS = DATA_PROCESSED / "lstm_oos_forecasts.parquet"
+OOS_FORECASTS = DATA_PROCESSED / "oos_forecasts.parquet"
+MONTHLY_VW_MSE = DATA_PROCESSED / "monthly_vw_mse.parquet"
+PREDICTOR_IMPORTANCE = DATA_PROCESSED / "predictor_importance.parquet"
+TUNING_RESULTS = DATA_PROCESSED / "lstm_tuning_results.csv"
+
+
+def rel(path) -> str:
+    """Path shown relative to the repo root, for tidy log messages."""
+    return str(Path(path).resolve().relative_to(REPO))
