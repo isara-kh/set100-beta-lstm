@@ -11,7 +11,6 @@ venv/
 env/
 
 # ---- Tooling / editor / OS ----
-.claude/
 .cache_mpl/
 .DS_Store
 *.log
@@ -48,8 +47,6 @@ env/
 *.bak
 *.verified_bak
 
-# ---- Agent-workflow config (local only, not portfolio content) ----
-# docs/adr/ is the exception: architecture decision records are project content.
-CLAUDE.md
+# ---- Working notes under docs/ stay local; ADRs are project content ----
 /docs/*
 !/docs/adr/
