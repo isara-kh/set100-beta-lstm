@@ -19,11 +19,27 @@ manuscript is not publicly deposited; available on request. This repository is
 the work reorganised as a standalone project — the code, the walkthrough, and
 the evidence.*
 
+## How the forecasts are made
+
+Every forecast is made from past data only. The model is refit once a year on a
+rolling five-year window, and a **full year is discarded** between the
+validation and test blocks — the same length as the forecast horizon, so a
+validation label's twelve-month realization window can never overlap the test
+period. Ten refits tile the 2015–2024 out-of-sample decade.
+
+![Walk-forward design: ten refits, each with a five-year training block, a one-year validation block, a discarded gap year, and a one-year test block, shifting forward one year at a time to tile 2015–2024](docs/img/walk_forward.png)
+
 ## Headline result
 
 Out-of-sample, 2015–2024 (120 months, 10,145 stock-month forecasts), scored on
 **value-weighted MSE** — market-cap weighted, so large stocks count more, the
-way a portfolio actually holds them:
+way a portfolio actually holds them.
+
+Cumulating the monthly loss difference against each benchmark shows the two
+results at once: a steady, decisive win over the five-year monthly beta, and no
+durable edge over the one-year daily beta.
+
+![Cumulative value-weighted MSE differential against each benchmark. Against the five-year monthly beta the LSTM gains steadily, ending +11.7 with DM t = -6.55, p < 0.001. Against the one-year daily beta the edge builds to +0.98 by November 2022, then falls back, ending at -0.25 with DM t = 0.20, not significant](docs/img/horse_race.png)
 
 | Model | What it is | VW-MSE | vs LSTM |
 |---|---|---:|---:|
@@ -42,6 +58,8 @@ factor of two.
 The aggregate above hides the more interesting finding. Sorting stocks into size
 terciles each month — and keeping the same value-weighted loss *within* each
 tercile — the LSTM's advantage is concentrated in smaller names:
+
+![Value-weighted MSE by size tercile, LSTM against the one-year daily rolling OLS beta. In small caps the LSTM is better by 0.043 (p = 0.027) and in mid caps by 0.029 (p = 0.003); in large caps it is worse by 0.010, which is not significant (p = 0.36)](docs/img/size_terciles.png)
 
 | Size tercile | LSTM | OLS 1Y daily | OLS 5Y monthly | DM vs 1Y daily | p |
 |---|---:|---:|---:|---:|---:|
@@ -103,6 +121,7 @@ uv run python -m betaforecast.evaluation.evaluate            # the VW-MSE table
 uv run python -m betaforecast.evaluation.dm_test             # the DM horse race
 uv run python -m betaforecast.importance.by_size             # the size terciles
 uv run python -m betaforecast.importance.subsamples --dm-only  # size × regime
+uv run python -m betaforecast.figures.readme_figures         # the figures above
 uv run pytest                                                # leak-free invariants
 ```
 
@@ -149,9 +168,12 @@ betaforecast/               the pipeline, grouped by stage (importable package)
 │   └── dm_test.py          Diebold–Mariano tests (full sample + pre/post-COVID)
 ├── importance/             zero-out predictor importance, size/regime cuts
 ├── figures/                figure-generation scripts
+│   └── readme_figures.py   the two result figures above
 └── paths.py                one place for all filesystem paths
 notebooks/                  the three-part walkthrough above
 tests/                      look-ahead and weighting invariants
+docs/img/                   the figures the README embeds (versioned)
+docs/adr/                   architecture decision records
 CONTEXT.md                  glossary — the project's vocabulary, pinned
 ```
 
