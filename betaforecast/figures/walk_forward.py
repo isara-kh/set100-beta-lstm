@@ -8,7 +8,7 @@ window shifts forward one year per iteration, so the test blocks tile the
 """
 import os
 
-from betaforecast.paths import REPO
+from betaforecast.paths import DOCS_IMG, REPO
 
 os.environ.setdefault("MPLCONFIGDIR", str(REPO / ".cache_mpl"))
 
@@ -69,4 +69,11 @@ fig.tight_layout()
 out = os.path.join(REPO, "figures", "walk_forward.pdf")
 fig.savefig(out, bbox_inches="tight")
 fig.savefig(os.path.join(REPO, "figures", "walk_forward_preview.png"), dpi=140, bbox_inches="tight")
-print(f"wrote {os.path.relpath(out, REPO)} and walk_forward_preview.png")
+
+# The README embeds this one, so it is versioned under docs/img/ rather than
+# left in the regenerable figures/ directory.
+os.makedirs(DOCS_IMG, exist_ok=True)
+fig.savefig(DOCS_IMG / "walk_forward.png", dpi=150, bbox_inches="tight",
+            facecolor="#fcfcfb")
+print(f"wrote {os.path.relpath(out, REPO)}, walk_forward_preview.png "
+      f"and {os.path.relpath(DOCS_IMG / 'walk_forward.png', REPO)}")

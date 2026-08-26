@@ -100,3 +100,15 @@ def test_published_size_tercile_result_reproduces(oos):
     # the 5Y-monthly benchmark is beaten in every tercile
     assert (dm["DM_OLS_5Y_M"] < 0).all()
     assert (dm["p_OLS_5Y_M"] < 0.001).all()
+
+
+def test_readme_figures_regenerate_from_the_shipped_artifact(oos, tmp_path,
+                                                             monkeypatch):
+    """The README embeds these, so a clone must be able to rebuild them."""
+    from betaforecast.figures import readme_figures as rf
+
+    monkeypatch.setattr(rf, "DOCS_IMG", tmp_path)
+    rf.report()
+
+    for name in ("horse_race.png", "size_terciles.png"):
+        assert (tmp_path / name).stat().st_size > 10_000

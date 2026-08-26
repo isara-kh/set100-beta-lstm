@@ -10,6 +10,9 @@ DATA_RAW = DATA / "raw"
 DATA_PROCESSED = DATA / "processed"
 MODELS = REPO / "models"
 FIGURES = REPO / "figures"
+# Figures the README embeds. Unlike FIGURES, these are versioned: the README
+# depends on them, so they must exist in a fresh clone.
+DOCS_IMG = REPO / "docs" / "img"
 
 # Processed artifacts referenced by name across the pipeline.
 LSTM_INPUT_PANEL = DATA_PROCESSED / "lstm_input_panel.parquet"
@@ -22,5 +25,13 @@ TUNING_RESULTS = DATA_PROCESSED / "lstm_tuning_results.csv"
 
 
 def rel(path) -> str:
-    """Path shown relative to the repo root, for tidy log messages."""
-    return str(Path(path).resolve().relative_to(REPO))
+    """Path shown relative to the repo root, for tidy log messages.
+
+    Falls back to the absolute path when the target lies outside the repo, so a
+    logging helper never brings down the caller.
+    """
+    resolved = Path(path).resolve()
+    try:
+        return str(resolved.relative_to(REPO))
+    except ValueError:
+        return str(resolved)
