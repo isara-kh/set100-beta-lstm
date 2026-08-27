@@ -191,19 +191,6 @@ Full pipeline order, with raw inputs in place: `data.build` → `model.lstm` →
 `benchmarks` → `evaluation.evaluate` → `evaluation.dm_test` →
 `importance.zero_out` → the `figures/` scripts.
 
-## Data availability
-
-The raw data (Refinitiv prices, SETSMART dividends, SET100 membership) and the
-trained model checkpoints are **not** distributed, for licensing and size
-reasons. The code expects raw inputs under `data/raw/` and writes processed
-panels and tables under `data/processed/`.
-
-The one exception is `data/processed/oos_forecasts.parquet`, which is committed:
-it contains only derived statistics — forward realized betas, the three
-forecasts, log market cap, and the stock-month key — and nothing from which a
-licensed price series could be reconstructed. It is what makes the evaluation
-reproducible. See [ADR 0001](docs/adr/0001-ship-derived-forecasts-only.md).
-
 ## Method notes
 
 - **Rank standardisation** — each month the nine firm/beta predictors are ranked
@@ -212,8 +199,3 @@ reproducible. See [ADR 0001](docs/adr/0001-ship-derived-forecasts-only.md).
 - **Rolling vs expanding window** — the training window rolls (5 years) rather
   than expands, following Drobetz et al. (2025); an expanding window tested
   slightly worse (VW-MSE 0.1124 vs 0.1094).
-- **Benchmarks are persistence forecasts** — the rolling-OLS betas are used
-  as-is as next-year forecasts, so there is no extra estimation to tune.
-- **Vocabulary** — "benchmark" always means a competing *forecast*, never the
-  market index; the index is the *market proxy*. The prediction target is always
-  the *forward* realized beta. See [CONTEXT.md](CONTEXT.md).
