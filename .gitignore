@@ -48,7 +48,8 @@ env/
 *.verified_bak
 
 # ---- Working notes under docs/ stay local; ADRs and the README's figures
-#      are project content ----
+#      are project content, as are the agent docs ----
 /docs/*
 !/docs/adr/
 !/docs/img/
+!/docs/agents/
