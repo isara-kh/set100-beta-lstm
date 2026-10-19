@@ -34,7 +34,8 @@ def decimals(text):
 
 def test_writes_only_the_registered_embed_files(out):
     files = sorted(p.relative_to(out).as_posix() for p in out.rglob("*") if p.is_file())
-    assert files == sorted(f"data/{n}.json" for n in EMBEDS)
+    assert files == sorted([*(f"data/{n}.json" for n in EMBEDS),
+                            "figures/lstm-ensemble.svg"])
     assert set(EMBEDS) >= {"walk-forward", "horse-race"}
 
 
@@ -98,6 +99,29 @@ def test_two_runs_are_byte_identical(out, tmp_path):
         assert a.endswith(b"\n") and not a.endswith(b"\n\n")
 
 
+def test_svg_is_byte_identical_and_has_no_run_specific_content(out, tmp_path):
+    export(tmp_path)
+    a = (out / "figures" / "lstm-ensemble.svg").read_bytes()
+    assert a == (tmp_path / "figures" / "lstm-ensemble.svg").read_bytes()
+    text = a.decode("utf-8")
+    assert "<dc:date>" not in text and "<dc:date" not in text
+
+
+def test_svg_parses_with_an_svg_root(out):
+    from xml.etree import ElementTree as ET
+    root = ET.parse(out / "figures" / "lstm-ensemble.svg").getroot()
+    assert root.tag == "{http://www.w3.org/2000/svg}svg"
+
+
+def test_svg_export_does_not_change_global_matplotlib_state(tmp_path):
+    import matplotlib
+    from betaforecast.figures import lstm_architecture
+    before = dict(matplotlib.rcParams)
+    lstm_architecture.write_svg(tmp_path / "x.svg")
+    assert dict(matplotlib.rcParams) == before
+    assert matplotlib.get_backend().lower() == "agg"
+
+
 def test_export_leaves_existing_showcase_files_alone(tmp_path, oos_module):
     att = tmp_path / "attachments"
     att.mkdir()
@@ -107,10 +131,12 @@ def test_export_leaves_existing_showcase_files_alone(tmp_path, oos_module):
 
 
 def test_committed_export_is_fresh(out):
-    from betaforecast.paths import SHOWCASE_DATA
+    from betaforecast.paths import SHOWCASE_DATA, SHOWCASE_FIGURES
     for name in EMBEDS:
         assert (SHOWCASE_DATA / f"{name}.json").read_bytes() == \
             (out / "data" / f"{name}.json").read_bytes()
+    assert (SHOWCASE_FIGURES / "lstm-ensemble.svg").read_bytes() == \
+        (out / "figures" / "lstm-ensemble.svg").read_bytes()
 
 
 # --- importance embed -------------------------------------------------------
