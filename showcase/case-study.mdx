@@ -50,7 +50,7 @@ My reading, and it is only a reading, is that a one-year daily regression alread
 
 ## 6. What the model relies on
 
-A zero-out importance test sets one predictor at a time to a neutral value and measures how much the forecast error rises. Only the recent rolling betas matter: `OLS_3M_D` (t = 4.93) and `OLS_1Y_D` (t = 3.58). The firm characteristics add little. So the network earns its edge mainly through the flexible way it recombines recent realized betas, not through extra signal from the wider predictor set.
+A zero-out importance test replaces one predictor at a time with its training-fold mean, reruns the saved ensemble, and measures how much the value-weighted forecast error rises. Only the recent rolling betas matter: `OLS_3M_D` (t = 4.93) and `OLS_1Y_D` (t = 3.58). The firm characteristics add little. So the network earns its edge mainly through the flexible way it recombines recent realized betas, not through extra signal from the wider predictor set.
 
 <Embed id="importance" />
 
