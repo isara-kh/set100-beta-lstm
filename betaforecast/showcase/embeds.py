@@ -1,7 +1,9 @@
 """One writer function per Live Embed; each returns the JSON-ready payload."""
+import numpy as np
 import pandas as pd
 
 from betaforecast.evaluation import dm_test, evaluate
+from betaforecast.figures import forecast_behavior as fb
 from betaforecast.features import sequences as seq
 from betaforecast.importance import subsamples
 from betaforecast.paths import PREDICTOR_IMPORTANCE_CSV, rel
@@ -14,6 +16,13 @@ DP_DIFF, DP_MSE, DP_T, DP_P = 6, 4, 2, 3
 # the differential precision, not DP_MSE: VI runs ~0.001-0.014 and 4 dp would
 # leave only 1-2 significant digits.
 DP_VI = DP_DIFF
+# Shrinkage embed: statistics and mean-series values at 4 dp (the manuscript's
+# Table 5 precision); histogram edges are multiples of BIN_WIDTH, exact at 2 dp.
+DP_BETA, DP_EDGE = 4, 2
+BIN_WIDTH = 0.05
+# shrinkage.json key -> forecast_behavior.SERIES column
+SHRINKAGE_SERIES = {"realized": "y_true", "lstm": "yhat_lstm",
+                    "ols_1y_d": "yhat_ols1yd", "ols_5y_m": "yhat_ols5ym"}
 
 
 def embed(name):
@@ -103,3 +112,35 @@ def where_it_wins(df):
                            "ols_5y_m": {"t": num(c["OLS_5Y_M"]["DM"], DP_T),
                                         "p": num(c["OLS_5Y_M"]["p"], DP_P)}}})
     return {"cells": cells}
+
+
+def shared_edges(arrays, width=BIN_WIDTH):
+    """Bin edges shared by all ``arrays``: every multiple of ``width`` from
+    floor(min/width) to ceil(max/width) over the pooled values, so the outer
+    bins reach the most extreme observation of any series and none is dropped.
+    Integer steps then one rounding keep the edges exact at DP_EDGE places."""
+    lo = min(float(np.min(a)) for a in arrays)
+    hi = max(float(np.max(a)) for a in arrays)
+    k = np.arange(int(np.floor(lo / width)), int(np.ceil(hi / width)) + 1)
+    return np.round(k * width, DP_EDGE)
+
+
+@embed("shrinkage")
+def shrinkage(df):
+    """Pooled histograms (shared edges) and Table 5 statistics for realized
+    beta and the three forecasts, plus the Figure 3 monthly mean series."""
+    values = {k: df[c].dropna().to_numpy(dtype="float64")
+              for k, c in SHRINKAGE_SERIES.items()}
+    edges = shared_edges(list(values.values()))
+    counts = {k: [int(c) for c in np.histogram(v, bins=edges)[0]]
+              for k, v in values.items()}
+    stats = {k: {s: (v if s == "n" else num(v, DP_BETA))
+                 for s, v in fb.describe(x).items()}
+             for k, x in values.items()}
+    g = fb.monthly_means(df)
+    mean_series = [{"origin": month_label(ym),
+                    **{k: num(g.loc[ym, c], DP_BETA)
+                       for k, c in SHRINKAGE_SERIES.items()}}
+                   for ym in g.index]
+    return {"edges": [num(e, DP_EDGE) for e in edges], "counts": counts,
+            "stats": stats, "mean_series": mean_series}

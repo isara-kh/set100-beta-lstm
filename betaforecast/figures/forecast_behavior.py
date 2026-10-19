@@ -36,6 +36,22 @@ SERIES = [
 ]
 
 
+def describe(x):
+    """Table 5 statistics of one pooled series: n, mean, sample sd (ddof=1),
+    bias-corrected sample skewness (pandas' estimator), min and max. Plain
+    floats, unrounded; NaNs are dropped before counting."""
+    x = pd.Series(x).dropna().astype("float64")
+    return {"n": int(len(x)), "mean": float(x.mean()), "sd": float(x.std()),
+            "skew": float(x.skew()), "min": float(x.min()), "max": float(x.max())}
+
+
+def monthly_means(df):
+    """Cross-sectional mean per origin month of realized beta and the three
+    forecasts (the Figure 3 series), sorted by month."""
+    cols = [c for _, c, _, _ in SERIES]
+    return df.groupby("ym")[cols].mean().sort_index()
+
+
 def plot_distribution(df):
     """Single overlay: forward realized beta (grey reference) and the three forecasts."""
     grid = np.linspace(-0.2, 2.6, 400)
@@ -73,8 +89,7 @@ def plot_distribution(df):
 
 def plot_timeseries(df):
     """Small multiples over time: forward realized beta vs one forecast per panel."""
-    cols = [c for _, c, _, _ in SERIES]
-    g = df.groupby("ym")[cols].mean().sort_index()
+    g = monthly_means(df)
     x = pd.PeriodIndex(g.index, freq="M").to_timestamp()
     onset = pd.Timestamp("2020-03-01")
 
@@ -115,8 +130,7 @@ def plot_timeseries_rebased(df):
     """Single panel: cross-sectional average of forward realized beta and the three
     forecasts, each indexed to 100 at the first OOS month so only relative
     movements remain."""
-    cols = [c for _, c, _, _ in SERIES]
-    g = df.groupby("ym")[cols].mean().sort_index()
+    g = monthly_means(df)
     g = g / g.iloc[0] * 100.0
     x = pd.PeriodIndex(g.index, freq="M").to_timestamp()
     onset = pd.Timestamp("2020-03-01")

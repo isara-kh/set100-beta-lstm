@@ -175,3 +175,75 @@ def test_missing_importance_csv_fails_clearly(tmp_path, monkeypatch, oos_module)
     msg = str(exc.value)
     assert "predictor_importance.csv" in msg
     assert "python -m betaforecast.importance.zero_out" in msg
+
+
+# --- shrinkage embed --------------------------------------------------------
+
+SERIES = ("realized", "lstm", "ols_1y_d", "ols_5y_m")
+
+# Manuscript Table 5, as printed (4 dp): n = 10,145 pooled stock-months.
+# Std is the sample (ddof=1) standard deviation; Skew is the bias-corrected
+# sample skewness (pandas' default), which is what separates 0.7465 from the
+# population estimator's 0.7464 for the realized beta.
+TABLE_5 = {
+    "realized": {"mean": 0.9753, "sd": 0.3893, "skew": 0.7465, "min": -0.5451, "max": 3.2181},
+    "lstm":     {"mean": 0.9427, "sd": 0.1910, "skew": -0.4345, "min": 0.3275, "max": 1.4604},
+    "ols_1y_d": {"mean": 0.9771, "sd": 0.3759, "skew": 0.5282, "min": -1.4974, "max": 3.1643},
+    "ols_5y_m": {"mean": 1.1241, "sd": 0.4254, "skew": 0.3493, "min": -0.2704, "max": 2.5400},
+}
+
+
+def test_shrinkage_shape(out):
+    sh = load(out, "shrinkage")
+    assert list(sh) == ["edges", "counts", "stats", "mean_series"]
+    edges = sh["edges"]
+    assert edges == sorted(edges) and len(set(edges)) == len(edges)
+    assert list(sh["counts"]) == list(SERIES)
+    for s in SERIES:
+        counts = sh["counts"][s]
+        assert len(counts) == len(edges) - 1
+        assert all(type(c) is int and c >= 0 for c in counts)
+        assert type(sh["stats"][s]["n"]) is int
+        assert {"n", "mean", "sd", "skew"} <= set(sh["stats"][s])
+    ms = sh["mean_series"]
+    assert len(ms) == 120
+    origins = [m["origin"] for m in ms]
+    assert origins == sorted(origins) and len(set(origins)) == 120
+    assert origins[0] == "2015-01" and origins[-1] == "2024-12"
+    assert all(re.fullmatch(r"\d{4}-\d{2}", o) for o in origins)
+    assert all(list(m) == ["origin", *SERIES] for m in ms)
+
+
+def test_shrinkage_counts_sum_to_n_and_cover_every_observation(out):
+    sh = load(out, "shrinkage")
+    for s in SERIES:
+        assert sh["stats"][s]["n"] == 10145
+        assert sum(sh["counts"][s]) == sh["stats"][s]["n"]
+        lo, hi = sh["stats"][s]["min"], sh["stats"][s]["max"]
+        assert sh["edges"][0] <= lo and hi <= sh["edges"][-1]
+
+
+def test_shrinkage_rounding(out):
+    text = (out / "data" / "shrinkage.json").read_text()
+    sh = load(out, "shrinkage")
+    # Edges are exact at 2 dp; stats and mean-series values at 4 dp.
+    assert all(round(e, 2) == e for e in sh["edges"])
+    for key in ("mean", "sd", "skew", "min", "max", *SERIES):
+        for lit in re.findall(rf'"{key}": (-?[\d.]+(?:e-?\d+)?)', text):
+            assert decimals(lit) <= 4, (key, lit)
+
+
+@pytest.mark.parametrize("series", SERIES)
+def test_shrinkage_stats_match_manuscript_table_5(out, series):
+    got = load(out, "shrinkage")["stats"][series]
+    for stat, printed in TABLE_5[series].items():
+        assert got[stat] == pytest.approx(printed, abs=5e-5), (series, stat)
+
+
+def test_shrinkage_mean_series_averages_to_pooled_means_within_rounding(out):
+    sh = load(out, "shrinkage")
+    # Every month has the same cross-section size only approximately, so the
+    # mean of monthly means is near (not equal to) the pooled mean.
+    for s in SERIES:
+        avg = sum(m[s] for m in sh["mean_series"]) / 120
+        assert avg == pytest.approx(sh["stats"][s]["mean"], abs=0.02)
