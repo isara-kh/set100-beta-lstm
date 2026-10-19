@@ -3,6 +3,7 @@ import pandas as pd
 
 from betaforecast.evaluation import dm_test, evaluate
 from betaforecast.features import sequences as seq
+from betaforecast.importance import subsamples
 from betaforecast.paths import PREDICTOR_IMPORTANCE_CSV, rel
 
 EMBEDS = {}
@@ -76,3 +77,29 @@ def importance(df):
         {"name": r.predictor, "vi": num(r.VI, DP_VI),
          "t": num(r.t_stat, DP_T), "p": num(r.p_value, DP_P)}
         for r in tab.itertuples()]}
+
+
+@embed("where-it-wins")
+def where_it_wins(df):
+    """24 cells: weighting x regime x size group, in that (deterministic) order.
+
+    EW is the mean of monthly means (weights 1/N_t per origin month), for the
+    MSE and the DM differential alike; see ``subsamples.monthly_loss``.
+    """
+    cells = []
+    by_weighting = {w: subsamples.group_regime_cells(df, weighted=(w == "vw"))
+                    for w in ("vw", "ew")}
+    for w in ("vw", "ew"):
+        for r in subsamples.REGIMES:
+            for g in subsamples.GROUPS_ALL:
+                c = by_weighting[w][(g, r)]
+                cells.append({
+                    "weighting": w, "regime": r, "group": g,
+                    "mse": {"lstm": num(c["MSE_LSTM"], DP_MSE),
+                            "ols_1y_d": num(c["OLS_1Y_D"]["MSE"], DP_MSE),
+                            "ols_5y_m": num(c["OLS_5Y_M"]["MSE"], DP_MSE)},
+                    "dm": {"ols_1y_d": {"t": num(c["OLS_1Y_D"]["DM"], DP_T),
+                                        "p": num(c["OLS_1Y_D"]["p"], DP_P)},
+                           "ols_5y_m": {"t": num(c["OLS_5Y_M"]["DM"], DP_T),
+                                        "p": num(c["OLS_5Y_M"]["p"], DP_P)}}})
+    return {"cells": cells}
