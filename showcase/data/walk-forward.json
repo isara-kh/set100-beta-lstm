@@ -1,0 +1,8 @@
+{
+  "start_year": 2008,
+  "train_years": 5,
+  "validation_years": 1,
+  "gap_years": 1,
+  "test_years": 1,
+  "iterations": 10
+}

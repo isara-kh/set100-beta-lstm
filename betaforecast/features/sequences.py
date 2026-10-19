@@ -16,6 +16,14 @@ PREDICTORS = ["OLS_3M_D", "OLS_1Y_D", "OLS_5Y_M", "ME", "DIVPAY",
 TARGET = "beta_realized_fwd"
 L = 12  # lookback length in months
 
+# The walk-forward scheme (calendar years of the forecast origin).
+FIRST_TRAIN_START = 2008
+TRAIN_YEARS = 5
+VALIDATION_YEARS = 1
+GAP_YEARS = 1     # equals the 12-month horizon; see walk_forward_iterations
+TEST_YEARS = 1
+N_ITERATIONS = 10
+
 
 def load_panel(path=PANEL):
     """Load the LSTM-input panel and parse ym as a monthly Period."""
@@ -58,7 +66,8 @@ def build_sequences(df, L=L):
     return X, y, meta
 
 
-def walk_forward_iterations(n_iters=10, train_years=5, first_train_start=2008,
+def walk_forward_iterations(n_iters=N_ITERATIONS, train_years=TRAIN_YEARS,
+                            first_train_start=FIRST_TRAIN_START,
                             expanding=False):
     """The ten walk-forward iterations, split by calendar year of the origin t.
 

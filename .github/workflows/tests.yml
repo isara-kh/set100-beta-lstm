@@ -25,3 +25,21 @@ jobs:
         # Runs against the committed out-of-sample forecast table; the raw data
         # and trained models are not distributed and are not needed here.
         run: uv run python -m pytest -q
+
+      - name: Check the showcase export is fresh
+        # Every later data ticket must commit its regenerated showcase/ output
+        # (run `uv run python -m betaforecast.showcase` and commit the result).
+        # This reruns the export from committed files only (Agg backend is
+        # pinned in the figure writer, so it is headless) and fails if any
+        # tracked file differs or any new, uncommitted file appears.
+        env:
+          MPLBACKEND: Agg
+        run: |
+          uv run python -m betaforecast.showcase
+          git diff --exit-code showcase/
+          untracked="$(git status --porcelain showcase/)"
+          if [ -n "$untracked" ]; then
+            echo "showcase/ has uncommitted changes after the export:" >&2
+            echo "$untracked" >&2
+            exit 1
+          fi

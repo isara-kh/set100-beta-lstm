@@ -8,6 +8,14 @@ market cap, and the stock-month key — from which no licensed price series can 
 reconstructed, and because it is enough to reproduce the entire evidence base:
 the VW-MSE table, the Diebold–Mariano horse race, and the size and regime cuts.
 
+## Amendment: the importance table
+
+`data/processed/predictor_importance.csv` (10 rows: predictor, VI, t-stat,
+p-value) is committed on the same grounds. It is derived statistics like the
+forecast table, a handful of loss differentials from which no licensed series
+can be reconstructed. Committing it makes every Case Study number reproducible
+from a bare clone, so the showcase export never needs the trained models.
+
 ## Considered options
 
 `lstm_input_panel.parquet` (3 MB) was rejected despite making training

@@ -23,8 +23,10 @@ import matplotlib.pyplot as plt
 from betaforecast.features import sequences as S
 from betaforecast.features import standardize as Z
 from betaforecast.evaluation import dm_test as DM
+from betaforecast.importance.table import write_importance_csv
 from betaforecast.paths import (MODELS as MODEL_DIR, OOS_FORECASTS as OOS,
-                                FIGURES, PREDICTOR_IMPORTANCE as TABLE, REPO)
+                                FIGURES, PREDICTOR_IMPORTANCE as TABLE, PREDICTOR_IMPORTANCE_CSV as TABLE_CSV,
+                                REPO)
 
 FIG = FIGURES / "predictor_importance.pdf"
 
@@ -129,6 +131,7 @@ def report():
     fc = collect_forecasts()
     imp, base = importance_table(fc)
     imp.to_parquet(TABLE)
+    write_importance_csv(imp, TABLE_CSV)
 
     print(f"\nBaseline VW-MSE = {base:.4f}  (reproduces saved LSTM forecasts)\n")
     ranked = imp.sort_values("VI_zeroout", ascending=False)
@@ -139,7 +142,7 @@ def report():
         print(f"{p_:12s}{r['VI_zeroout']:>12.4f}{r['t_stat']:>9.2f}{r['p_value']:>8.3f} {star}")
 
     plot_importance(imp)
-    print(f"\nFigure -> {os.path.relpath(FIG, REPO)}   Table -> {os.path.relpath(TABLE, REPO)}")
+    print(f"\nFigure -> {os.path.relpath(FIG, REPO)}   Table -> {os.path.relpath(TABLE, REPO)}, {os.path.relpath(TABLE_CSV, REPO)}")
 
 
 if __name__ == "__main__":

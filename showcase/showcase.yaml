@@ -1,0 +1,13 @@
+contract: 1
+slug: set100-beta-lstm
+title: Forecasting Thai stock betas with an LSTM
+thesis: Deep learning beats rolling OLS beta only where OLS is noisy.
+market: Thailand · SET100
+method: LSTM ensemble vs rolling OLS
+years: { from: 2008, to: 2024 }
+status: published
+headline: ~2× more accurate than the 5-year monthly beta
+links:
+  repo: https://github.com/isara-kh/set100-beta-lstm
+  paper: attachments/manuscript-redacted.pdf
+embeds: [walk-forward, horse-race, where-it-wins, shrinkage, importance]

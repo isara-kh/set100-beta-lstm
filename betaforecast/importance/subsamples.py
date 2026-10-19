@@ -64,27 +64,82 @@ def build_cells():
     return df
 
 
-def tercile_regime_dm(oos):
-    """Diebold-Mariano test, LSTM vs each benchmark, per size group x regime (value-weighted)."""
+REGIMES = ("all", "pre", "post")
+GROUPS_ALL = ("all", *(g.lower() for g in SS.GROUPS))
+
+
+def with_cuts(oos):
+    """OOS table plus cap, size tercile and regime, all cut on the origin."""
     df = SS.assign_terciles(oos.copy())
     df["cap"] = np.exp(df["ME"])
     df["regime"] = np.where(df["ym"] <= dm_test.PRE_END, "pre",
                             np.where(df["ym"] >= dm_test.COVID, "post", "drop"))
+    return df
+
+
+def monthly_loss(sub, se, weighted):
+    """Per-origin-month loss series of squared errors `se` over the rows of `sub`.
+
+    Value-weighted: within-month market-cap shares. Equal-weighted: weights
+    1/N_t, so the monthly loss is that month's mean squared error. Every
+    reported EW figure -- the MSE and the DM loss differential -- is the average
+    (or DM test) of this one monthly series, i.e. the *mean of monthly means*,
+    as the manuscript defines EW ("replaces w_i,t with 1/N_t", then averages
+    over the origins). It is not the pooled stock-month mean.
+    """
+    if weighted:
+        w = sub.groupby("ym")["cap"].transform(lambda s: s / s.sum())
+        return (w * se).groupby(sub["ym"]).sum().sort_index()
+    return se.groupby(sub["ym"]).mean().sort_index()
+
+
+def mse_within(sub, col, weighted):
+    """Average over origin months of the monthly (VW or EW) MSE of `col`."""
+    return float(monthly_loss(sub, (sub["y_true"] - sub[col]) ** 2, weighted).mean())
+
+
+def cell_stats(sub, weighted):
+    """MSEs and DM (LSTM vs each benchmark) for one slice of the OOS table."""
+    se_l = (sub["y_true"] - sub["yhat_lstm"]) ** 2
+    out = {"MSE_LSTM": mse_within(sub, "yhat_lstm", weighted)}
+    for name, col, _ in SS.MODELS[1:]:
+        delta = se_l - (sub["y_true"] - sub[col]) ** 2
+        _, dm, p, _ = dm_test.dm_stat(monthly_loss(sub, delta, weighted))
+        out[name] = {"DM": dm, "p": p, "MSE": mse_within(sub, col, weighted)}
+    return out
+
+
+def group_regime_cells(oos, weighted=True, groups=GROUPS_ALL, regimes=REGIMES):
+    """Per size group x regime cell: MSEs and Diebold-Mariano, LSTM vs each
+    benchmark, value-weighted (`weighted=True`) or equal-weighted.
+
+    Group "all" is every stock; "small"/"mid"/"large" are the origin-month
+    terciles. Regime "all" is all 120 origins; "pre"/"post" drop the two crisis
+    origins. Returns {(group, regime): cell_stats}, in loop order.
+    """
+    df = with_cuts(oos)
+    cells = {}
+    for g in groups:
+        in_group = df if g == "all" else df[df["size_grp"] == g.capitalize()]
+        for r in regimes:
+            sub = in_group if r == "all" else in_group[in_group["regime"] == r]
+            cells[(g, r)] = cell_stats(sub, weighted)
+    return cells
+
+
+def tercile_regime_dm(oos, weighted=True):
+    """Diebold-Mariano test, LSTM vs each benchmark, per size group x regime
+    (value-weighted by default); the accuracy report's table."""
+    terciles = [g.lower() for g in SS.GROUPS]
+    cells = group_regime_cells(oos, weighted, terciles, ("pre", "post"))
     rows = []
-    for g in SS.GROUPS:
-        for r in ("pre", "post"):
-            sub = df[(df["size_grp"] == g) & (df["regime"] == r)]
-            w = sub.groupby("ym")["cap"].transform(lambda s: s / s.sum())
-            se_l = (sub["y_true"] - sub["yhat_lstm"]) ** 2
-            row = {"group": g, "regime": r}
-            for name, col, _ in SS.MODELS[1:]:
-                delta = se_l - (sub["y_true"] - sub[col]) ** 2
-                d = (w * delta).groupby(sub["ym"]).sum().sort_index()
-                _, dm, p, _ = dm_test.dm_stat(d)
-                row[f"DM_{name}"], row[f"p_{name}"] = dm, p
-                row[f"MSE_LSTM"] = vw_mse(sub, "yhat_lstm")
-                row[f"MSE_{name}"] = vw_mse(sub, col)
-            rows.append(row)
+    for (g, r), c in cells.items():
+        row = {"group": g.capitalize(), "regime": r}
+        for name, _, _ in SS.MODELS[1:]:
+            row[f"DM_{name}"], row[f"p_{name}"] = c[name]["DM"], c[name]["p"]
+            row["MSE_LSTM"] = c["MSE_LSTM"]
+            row[f"MSE_{name}"] = c[name]["MSE"]
+        rows.append(row)
     return pd.DataFrame(rows).set_index(["group", "regime"])
 
 

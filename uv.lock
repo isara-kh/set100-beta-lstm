@@ -169,6 +169,7 @@ notebook = [
 ]
 test = [
     { name = "pytest" },
+    { name = "pyyaml" },
 ]
 
 [package.metadata]
@@ -189,7 +190,10 @@ notebook = [
     { name = "jupyterlab" },
     { name = "nbconvert" },
 ]
-test = [{ name = "pytest" }]
+test = [
+    { name = "pytest" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+]
 
 [[package]]
 name = "bleach"
