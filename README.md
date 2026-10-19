@@ -15,9 +15,14 @@ estimators with Diebold–Mariano tests.
 > it.
 
 *Originally an Independent Study at Chulalongkorn Business School. The
-manuscript is not publicly deposited; available on request. This repository is
-the work reorganised as a standalone project — the code, the walkthrough, and
+manuscript is available as a [redacted PDF](showcase/attachments/manuscript-redacted.pdf).
+This repository is the work reorganised as a standalone project — the code, the walkthrough, and
 the evidence.*
+
+**Where complexity pays:** the LSTM is about 2× more accurate than the 5-year
+monthly beta, statistically ties the 1-year daily beta on the value-weighted
+aggregate, and beats it in small and mid caps, where the gains are significant
+before COVID and not after.
 
 ## How the forecasts are made
 
@@ -174,6 +179,12 @@ notebooks/                  the three-part walkthrough above
 tests/                      look-ahead and weighting invariants
 docs/img/                   the figures the README embeds (versioned)
 docs/adr/                   architecture decision records
+showcase/                   the case-study export (not the pipeline)
+├── data/                   derived results as JSON, one file per embed
+├── figures/                standalone figures
+├── attachments/            the redacted manuscript PDF
+├── showcase.yaml           site metadata
+└── case-study.mdx          the written case study
 CONTEXT.md                  glossary — the project's vocabulary, pinned
 ```
 
