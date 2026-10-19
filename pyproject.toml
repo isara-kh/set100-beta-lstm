@@ -20,7 +20,10 @@ dependencies = [
 # Install with `uv sync` (dev groups install by default) so `uv run jupyter lab`
 # and the notebooks under notebooks/ work out of the box.
 notebook = ["jupyterlab", "nbconvert", "ipykernel"]
-test = ["pytest"]
+test = [
+    "pytest",
+    "pyyaml>=6.0.3",
+]
 
 [tool.pytest.ini_options]
 # tests/ is not a package; conftest helpers are imported by module name.
