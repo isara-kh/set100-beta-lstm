@@ -6,6 +6,7 @@ from betaforecast.evaluation import dm_test, evaluate
 from betaforecast.figures import forecast_behavior as fb
 from betaforecast.features import sequences as seq
 from betaforecast.importance import subsamples
+from betaforecast.showcase import manuscript
 from betaforecast.paths import PREDICTOR_IMPORTANCE_CSV, rel
 
 EMBEDS = {}
@@ -92,25 +93,37 @@ def importance(df):
 def where_it_wins(df):
     """24 cells: weighting x regime x size group, in that (deterministic) order.
 
+    Group "all" cells are computed from the OOS table. The 18 size-group cells
+    (small/mid/large) are the manuscript's printed Tables 9, 10, 13 and 14 from
+    ``showcase.manuscript.MANUSCRIPT_SIZE_CELLS``: MSE in raw units at the
+    printed precision (3 dp), t as printed, p computed from t (two-sided
+    normal, 3 dp) since the manuscript prints only stars. See ADR-0002.
+
+    The JSON has no provenance key (the site schema is strict). A cell is
+    transcribed exactly when its group is "small", "mid" or "large".
+
     EW is the mean of monthly means (weights 1/N_t per origin month), for the
     MSE and the DM differential alike; see ``subsamples.monthly_loss``.
     """
     cells = []
-    by_weighting = {w: subsamples.group_regime_cells(df, weighted=(w == "vw"))
+    by_weighting = {w: subsamples.group_regime_cells(df, weighted=(w == "vw"),
+                                                     groups=["all"])
                     for w in ("vw", "ew")}
     for w in ("vw", "ew"):
         for r in subsamples.REGIMES:
             for g in subsamples.GROUPS_ALL:
-                c = by_weighting[w][(g, r)]
-                cells.append({
-                    "weighting": w, "regime": r, "group": g,
-                    "mse": {"lstm": num(c["MSE_LSTM"], DP_MSE),
-                            "ols_1y_d": num(c["OLS_1Y_D"]["MSE"], DP_MSE),
-                            "ols_5y_m": num(c["OLS_5Y_M"]["MSE"], DP_MSE)},
-                    "dm": {"ols_1y_d": {"t": num(c["OLS_1Y_D"]["DM"], DP_T),
-                                        "p": num(c["OLS_1Y_D"]["p"], DP_P)},
-                           "ols_5y_m": {"t": num(c["OLS_5Y_M"]["DM"], DP_T),
-                                        "p": num(c["OLS_5Y_M"]["p"], DP_P)}}})
+                if g != "all":
+                    mse, dm = manuscript.manuscript_cell((w, r, g))
+                else:
+                    c = by_weighting[w][(g, r)]
+                    mse = {"lstm": num(c["MSE_LSTM"], DP_MSE),
+                           "ols_1y_d": num(c["OLS_1Y_D"]["MSE"], DP_MSE),
+                           "ols_5y_m": num(c["OLS_5Y_M"]["MSE"], DP_MSE)}
+                    dm = {k: {"t": num(c[b]["DM"], DP_T), "p": num(c[b]["p"], DP_P)}
+                          for k, b in (("ols_1y_d", "OLS_1Y_D"),
+                                       ("ols_5y_m", "OLS_5Y_M"))}
+                cells.append({"weighting": w, "regime": r, "group": g,
+                              "mse": mse, "dm": dm})
     return {"cells": cells}
 
 
