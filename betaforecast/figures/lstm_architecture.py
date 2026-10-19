@@ -15,6 +15,7 @@ from pathlib import Path
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, Circle, FancyArrowPatch
+from matplotlib.transforms import Bbox
 import seaborn as sns
 
 from betaforecast.paths import FIGURES, SHOWCASE_FIGURES, rel
@@ -31,6 +32,17 @@ RC = {
 # does not depend on fonts installed at view time.
 SVG_HASHSALT = "set100-beta-lstm/lstm-ensemble"
 SVG_NAME = "lstm-ensemble.svg"
+# tight_layout() and bbox_inches="tight" both measure rendered text, and that
+# measurement differs slightly between machines (CI scaled the drawing by
+# 0.99974). The SVG therefore pins the axes position and the crop box to the
+# values those calls produce on the reference machine, so its bytes do not
+# depend on text metrics. Re-derive both if the drawing itself changes.
+SVG_AXES_POSITION = (0.003968253968253969, 0.007716049382716084,
+                     0.9799373759920635, 0.9845679012345676)
+SVG_BBOX_INCHES = Bbox.from_bounds(0.055555555555555566 - 0.1,
+                                   0.0555555555555558 - 0.1,
+                                   13.75567959449405 + 0.2,
+                                   7.088888888888887 + 0.2)
 
 OUT_PDF = FIGURES / "lstm_dataflow.pdf"
 OUT_PNG = FIGURES / "lstm_dataflow_preview.png"
@@ -150,7 +162,8 @@ def write_svg(path=SHOWCASE_FIGURES / SVG_NAME):
     with plt.rc_context({**RC, "svg.hashsalt": SVG_HASHSALT, "svg.fonttype": "path"}):
         fig = build_figure()
         try:
-            fig.savefig(path, format="svg", bbox_inches="tight",
+            fig.axes[0].set_position(SVG_AXES_POSITION)
+            fig.savefig(path, format="svg", bbox_inches=SVG_BBOX_INCHES,
                         metadata={"Date": None})
         finally:
             plt.close(fig)
