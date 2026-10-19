@@ -111,3 +111,41 @@ def test_committed_export_is_fresh(out):
     for name in EMBEDS:
         assert (SHOWCASE_DATA / f"{name}.json").read_bytes() == \
             (out / "data" / f"{name}.json").read_bytes()
+
+
+# --- importance embed -------------------------------------------------------
+
+def test_importance_shape_and_sort(out):
+    imp = load(out, "importance")
+    assert list(imp) == ["predictors"]
+    rows = imp["predictors"]
+    assert len(rows) == 10
+    for r in rows:
+        assert list(r) == ["name", "vi", "t", "p"]
+        assert isinstance(r["name"], str)
+        assert all(isinstance(r[k], float) for k in ("vi", "t", "p"))
+    vis = [r["vi"] for r in rows]
+    assert vis == sorted(vis, reverse=True)
+    assert len({r["name"] for r in rows}) == 10
+    assert rows[0]["name"] == "OLS_3M_D" and min(vis) < 0
+
+
+def test_importance_rounding(out):
+    text = (out / "data" / "importance.json").read_text()
+    for key, dp in (("vi", 6), ("t", 2), ("p", 3)):
+        lits = re.findall(rf'"{key}": (-?[\d.]+(?:e-?\d+)?)', text)
+        assert len(lits) == 10
+        for lit in lits:
+            assert decimals(lit) <= dp, (key, lit)
+    first = load(out, "importance")["predictors"][0]
+    assert first == {"name": "OLS_3M_D", "vi": 0.014446, "t": 4.93, "p": 0.0}
+
+
+def test_missing_importance_csv_fails_clearly(tmp_path, monkeypatch, oos_module):
+    from betaforecast.showcase import embeds
+    monkeypatch.setattr(embeds, "PREDICTOR_IMPORTANCE_CSV", tmp_path / "predictor_importance.csv")
+    with pytest.raises(FileNotFoundError) as exc:
+        export(tmp_path / "site")
+    msg = str(exc.value)
+    assert "predictor_importance.csv" in msg
+    assert "python -m betaforecast.importance.zero_out" in msg

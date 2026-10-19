@@ -1,11 +1,18 @@
 """One writer function per Live Embed; each returns the JSON-ready payload."""
+import pandas as pd
+
 from betaforecast.evaluation import dm_test, evaluate
 from betaforecast.features import sequences as seq
+from betaforecast.paths import PREDICTOR_IMPORTANCE_CSV, rel
 
 EMBEDS = {}
 
 # Rounding at export (decimal places).
 DP_DIFF, DP_MSE, DP_T, DP_P = 6, 4, 2, 3
+# Zero-out importance (VI) is a difference of value-weighted MSEs, so it takes
+# the differential precision, not DP_MSE: VI runs ~0.001-0.014 and 4 dp would
+# leave only 1-2 significant digits.
+DP_VI = DP_DIFF
 
 
 def embed(name):
@@ -53,3 +60,19 @@ def horse_race(df):
         dbar, t, p, _ = dm_test.dm_stat(diffs[b])
         dm[k] = {"dbar": num(dbar, DP_DIFF), "t": num(t, DP_T), "p": num(p, DP_P)}
     return {"covid_start": dm_test.COVID, "months": months, "dm": dm}
+
+
+@embed("importance")
+def importance(df):
+    # Tests point PREDICTOR_IMPORTANCE_CSV (this module's name) at a temp path.
+    path = PREDICTOR_IMPORTANCE_CSV
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Missing {rel(path)}, the committed predictor-importance table. "
+            "Produce it locally with `python -m betaforecast.importance.zero_out` "
+            "(needs the trained models, which are not distributed), then commit it.")
+    tab = pd.read_csv(path).sort_values("VI", ascending=False, kind="stable")
+    return {"predictors": [
+        {"name": r.predictor, "vi": num(r.VI, DP_VI),
+         "t": num(r.t_stat, DP_T), "p": num(r.p_value, DP_P)}
+        for r in tab.itertuples()]}
