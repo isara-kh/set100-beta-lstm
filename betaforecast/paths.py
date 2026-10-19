@@ -28,6 +28,8 @@ LSTM_OOS_FORECASTS = DATA_PROCESSED / "lstm_oos_forecasts.parquet"
 OOS_FORECASTS = DATA_PROCESSED / "oos_forecasts.parquet"
 MONTHLY_VW_MSE = DATA_PROCESSED / "monthly_vw_mse.parquet"
 PREDICTOR_IMPORTANCE = DATA_PROCESSED / "predictor_importance.parquet"
+# Committed derived table (10 rows); see ADR-0001.
+PREDICTOR_IMPORTANCE_CSV = DATA_PROCESSED / "predictor_importance.csv"
 TUNING_RESULTS = DATA_PROCESSED / "lstm_tuning_results.csv"
 
 
