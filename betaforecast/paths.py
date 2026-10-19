@@ -14,6 +14,13 @@ FIGURES = REPO / "figures"
 # depends on them, so they must exist in a fresh clone.
 DOCS_IMG = REPO / "docs" / "img"
 
+# The Content Contract folder for the portfolio site. The showcase export owns
+# data/ and figures/ inside it; attachments/ and the hand-written files are not
+# touched by any code.
+SHOWCASE = REPO / "showcase"
+SHOWCASE_DATA = SHOWCASE / "data"
+SHOWCASE_FIGURES = SHOWCASE / "figures"
+
 # Processed artifacts referenced by name across the pipeline.
 LSTM_INPUT_PANEL = DATA_PROCESSED / "lstm_input_panel.parquet"
 PROCESSED_PANEL = DATA_PROCESSED / "processed_data_panel.parquet"
